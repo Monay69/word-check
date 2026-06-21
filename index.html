@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>单词检测</title>
+<style>
+  :root{
+    --bg:#EEF0F3;
+    --surface:#FFFFFF;
+    --ink:#15202B;
+    --ink-soft:#5A6573;
+    --line:#E2E6EC;
+    --brand:#2D4ECC;
+    --brand-soft:#E7ECFC;
+    --ok:#0E9F6E;
+    --ok-soft:#E1F4ED;
+    --bad:#E2533B;
+    --bad-soft:#FBE7E2;
+    --amber:#F5A623;
+    --gray:#9AA4B2;
+    --shadow:0 1px 2px rgba(21,32,43,.06),0 8px 24px rgba(21,32,43,.07);
+    --radius:18px;
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--font);
+    background:var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    line-height:1.5;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .wrap{max-width:560px;margin:0 auto;padding:18px 16px 40px;}
+  .hidden{display:none!important}
+
+  /* ---------- Header ---------- */
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 2px 18px}
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo .mark{
+    width:34px;height:34px;border-radius:10px;background:var(--brand);
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:18px;box-shadow:var(--shadow)
+  }
+  .logo h1{font-size:19px;font-weight:800;margin:0;letter-spacing:-.2px}
+  .logo span{display:block;font-size:11px;color:var(--ink-soft);font-weight:600;letter-spacing:.4px}
+  .ghost-btn{
+    border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);
+    font-weight:700;font-size:13px;padding:8px 12px;border-radius:11px;cursor:pointer
+  }
+  .ghost-btn:active{transform:scale(.96)}
+
+  /* ---------- Card ---------- */
+  .card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+  .card+.card{margin-top:14px}
+  .label{font-size:13px;font-weight:800;color:var(--ink);margin:0 0 4px}
+  .hint{font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;line-height:1.5}
+
+  textarea{
+    width:100%;min-height:160px;resize:vertical;border:1px solid var(--line);
+    border-radius:14px;padding:13px 14px;font-size:16px;font-family:var(--font);
+    color:var(--ink);background:#FbFcFd;line-height:1.6;outline:none
+  }
+  textarea:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px var(--brand-soft)}
+
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .seg{display:inline-flex;background:#F1F3F6;border-radius:12px;padding:3px;gap:2px}
+  .seg button{
+    border:0;background:transparent;color:var(--ink-soft);font-weight:700;font-size:13px;
+    padding:8px 12px;border-radius:9px;cursor:pointer;white-space:nowrap
+  }
+  .seg button.on{background:#fff;color:var(--brand);box-shadow:var(--shadow)}
+
+  .field{flex:1;min-width:130px}
+  .field .label{margin-bottom:6px}
+
+  .primary{
+    width:100%;border:0;border-radius:14px;background:var(--brand);color:#fff;
+    font-weight:800;font-size:16px;padding:15px;cursor:pointer;box-shadow:var(--shadow);
+    letter-spacing:.2px;margin-top:4px
+  }
+  .primary:active{transform:scale(.985);filter:brightness(.97)}
+  .primary[disabled]{background:var(--gray);box-shadow:none}
+
+  /* ---------- Word list ---------- */
+  .listhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .count{font-size:13px;font-weight:800;color:var(--ink)}
+  .count em{color:var(--brand);font-style:normal}
+  .clear{font-size:12.5px;font-weight:700;color:var(--bad);background:none;border:0;cursor:pointer;padding:4px}
+  .wlist{max-height:240px;overflow:auto;margin:0 -4px;-webkit-overflow-scrolling:touch}
+  .witem{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:10px}
+  .witem:nth-child(odd){background:#F7F8FA}
+  .witem .t{font-weight:700;font-size:14.5px;flex-shrink:0;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .witem .d{color:var(--ink-soft);font-size:13.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .witem .x{color:var(--gray);background:none;border:0;font-size:18px;line-height:1;cursor:pointer;padding:2px 4px;flex-shrink:0}
+  .empty{text-align:center;color:var(--gray);font-size:13.5px;padding:26px 10px}
+
+  .samples{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chip{font-size:12.5px;font-weight:700;color:var(--brand);background:var(--brand-soft);
+    border:0;padding:7px 12px;border-radius:999px;cursor:pointer}
+  .chip:active{transform:scale(.95)}
+
+  /* ---------- Quiz top ---------- */
+  .quiztop{margin-bottom:16px}
+  .quizmeta{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .round-tag{font-size:12px;font-weight:800;color:#fff;background:var(--brand);padding:4px 10px;border-radius:999px}
+  .round-tag.review{background:var(--amber)}
+  .remain{font-size:13px;font-weight:700;color:var(--ink-soft)}
+  .remain b{color:var(--ink)}
+  .quit{font-size:12.5px;font-weight:700;color:var(--ink-soft);background:none;border:0;cursor:pointer}
+
+  .dots{display:flex;flex-wrap:wrap;gap:5px}
+  .dot{width:12px;height:12px;border-radius:4px;background:#DCE1E8;transition:background .25s,transform .25s}
+  .dot.cur{background:var(--brand);transform:scale(1.18)}
+  .dot.ok{background:var(--ok)}
+  .dot.bad{background:var(--bad)}
+  .dot.done{background:var(--ok);opacity:.45}
+
+  /* ---------- Question ---------- */
+  .qcard{text-align:center;padding:26px 18px}
+  .qkind{font-size:12px;font-weight:800;letter-spacing:1px;color:var(--gray);text-transform:uppercase;margin-bottom:12px}
+  .qterm{font-size:34px;font-weight:800;letter-spacing:-.5px;line-height:1.25;word-break:break-word}
+  .qterm.cn{font-size:27px}
+  .qsub{margin-top:8px;font-size:13px;color:var(--gray);font-weight:600}
+
+  .opts{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+  .opt{
+    text-align:left;border:1.5px solid var(--line);background:var(--surface);
+    border-radius:14px;padding:14px 15px;font-size:16px;font-weight:600;color:var(--ink);
+    cursor:pointer;display:flex;align-items:center;gap:11px;transition:border-color .15s,background .15s
+  }
+  .opt:active{transform:scale(.99)}
+  .opt .key{width:24px;height:24px;border-radius:7px;background:#F1F3F6;color:var(--ink-soft);
+    font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .opt .txt{flex:1}
+  .opt.correct{border-color:var(--ok);background:var(--ok-soft);color:#0a6e4d}
+  .opt.correct .key{background:var(--ok);color:#fff}
+  .opt.wrong{border-color:var(--bad);background:var(--bad-soft);color:#a83622}
+  .opt.wrong .key{background:var(--bad);color:#fff}
+  .opt.dim{opacity:.5}
+  .opt[disabled]{cursor:default}
+
+  .feedback{margin-top:14px;min-height:24px;text-align:center;font-weight:800;font-size:15px}
+  .feedback.ok{color:var(--ok)}
+  .feedback.bad{color:var(--bad)}
+  .next-btn{width:100%;border:0;border-radius:14px;background:var(--ink);color:#fff;
+    font-weight:800;font-size:15.5px;padding:14px;cursor:pointer;margin-top:12px}
+  .next-btn:active{transform:scale(.985)}
+
+  /* ---------- Round summary ---------- */
+  .summary{text-align:center;padding:28px 20px}
+  .big-emoji{font-size:46px;margin-bottom:6px}
+  .summary h2{font-size:22px;font-weight:800;margin:4px 0 6px}
+  .summary p{color:var(--ink-soft);font-size:14.5px;margin:0 0 18px}
+  .stat-row{display:flex;gap:10px;margin:0 0 18px}
+  .stat{flex:1;background:#F7F8FA;border-radius:14px;padding:14px 8px}
+  .stat .n{font-size:26px;font-weight:800}
+  .stat .l{font-size:12px;color:var(--ink-soft);font-weight:700;margin-top:2px}
+  .stat.ok .n{color:var(--ok)}
+  .stat.bad .n{color:var(--bad)}
+
+  /* ---------- Match mode ---------- */
+  .match-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:4px}
+  .mcell{
+    border:1.5px solid var(--line);background:var(--surface);border-radius:13px;
+    padding:14px 10px;min-height:62px;font-size:15px;font-weight:600;color:var(--ink);
+    cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center;
+    transition:transform .12s,border-color .12s,background .12s,opacity .3s
+  }
+  .mcell.term{font-weight:800}
+  .mcell:active{transform:scale(.97)}
+  .mcell.sel{border-color:var(--brand);background:var(--brand-soft)}
+  .mcell.miss{border-color:var(--bad);background:var(--bad-soft);animation:shake .35s}
+  .mcell.hit{border-color:var(--ok);background:var(--ok-soft)}
+  .mcell.gone{opacity:0;pointer-events:none;transform:scale(.8)}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+  .match-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .timer{font-variant-numeric:tabular-nums;font-weight:800;font-size:17px;color:var(--brand)}
+  .match-prog{font-size:13px;font-weight:700;color:var(--ink-soft)}
+
+  .footer-note{text-align:center;color:var(--gray);font-size:11.5px;margin-top:22px;line-height:1.6}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">
+      <div class="mark">词</div>
+      <div>
+        <h1>单词检测</h1>
+        <span>WORD CHECK · 错题循环到掌握</span>
+      </div>
+    </div>
+    <button class="ghost-btn" id="homeBtn" onclick="goHome()" hidden>词库</button>
+  </header>
+
+  <!-- ============ 录入 / 主页 ============ -->
+  <section id="view-home">
+    <div class="card">
+      <p class="label">批量录入</p>
+      <p class="hint">每行一个：单词在前、意思在后，中间用 <b>空格 / Tab / 逗号 / 破折号</b> 分隔皆可。例如「apple 苹果」。</p>
+      <textarea id="bulk" placeholder="apple 苹果&#10;banana 香蕉&#10;diligent 勤奋的&#10;ambiguous 模棱两可的"></textarea>
+      <div class="samples">
+        <button class="chip" onclick="loadSample('cet4')">载入示例·四级</button>
+        <button class="chip" onclick="loadSample('gre')">载入示例·进阶</button>
+        <button class="chip" onclick="addBulk()">＋ 添加到词库</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="listhead">
+        <span class="count">词库 <em id="wcount">0</em> 个</span>
+        <button class="clear" onclick="clearAll()">清空</button>
+      </div>
+      <div class="wlist" id="wlist"></div>
+    </div>
+
+    <div class="card">
+      <p class="label">检测设置</p>
+      <div class="row" style="margin-bottom:14px">
+        <div class="field">
+          <p class="label">题目方向</p>
+          <div class="seg" id="segDir">
+            <button data-v="t2d" class="on">看词→选义</button>
+            <button data-v="d2t">看义→选词</button>
+            <button data-v="mix">混合</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <p class="label">练习方式</p>
+          <div class="seg" id="segMode">
+            <button data-v="quiz" class="on">检测·错题循环</button>
+            <button data-v="match">配对·消除游戏</button>
+          </div>
+        </div>
+      </div>
+      <button class="primary" id="startBtn" onclick="start()">开始</button>
+    </div>
+
+    <p class="footer-note">词库会自动保存在本机浏览器中（不联网、不上传）。<br>建议用 iPhone「添加到主屏幕」当作 App 使用。</p>
+  </section>
+
+  <!-- ============ 检测模式 ============ -->
+  <section id="view-quiz" class="hidden">
+    <div class="quiztop">
+      <div class="quizmeta">
+        <span class="round-tag" id="roundTag">第 1 轮</span>
+        <span class="remain">剩余 <b id="remainN">0</b> 题</span>
+        <button class="quit" onclick="goHome()">退出</button>
+      </div>
+      <div class="dots" id="dots"></div>
+    </div>
+
+    <div class="card qcard">
+      <div class="qkind" id="qkind">选择正确的释义</div>
+      <div class="qterm" id="qterm">—</div>
+    </div>
+
+    <div class="opts" id="opts"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn hidden" id="nextBtn" onclick="nextQuestion()">继续</button>
+  </section>
+
+  <!-- ============ 轮次小结 ============ -->
+  <section id="view-summary" class="hidden">
+    <div class="card summary">
+      <div class="big-emoji" id="sumEmoji">📝</div>
+      <h2 id="sumTitle">本轮完成</h2>
+      <p id="sumDesc"></p>
+      <div class="stat-row">
+        <div class="stat ok"><div class="n" id="sumOk">0</div><div class="l">答对</div></div>
+        <div class="stat bad"><div class="n" id="sumBad">0</div><div class="l">需重测</div></div>
+      </div>
+      <button class="primary" id="sumBtn" onclick="afterSummary()">下一轮</button>
+    </div>
+  </section>
+
+  <!-- ============ 全部完成 ============ -->
+  <section id="view-done" class="hidden">
+    <div class="card summary">
+      <div class="big-emoji">🎉</div>
+      <h2>全部掌握！</h2>
+      <p id="doneDesc">所有单词都答对了。</p>
+      <div class="stat-row">
+        <div class="stat"><div class="n" id="doneRounds">0</div><div class="l">总轮数</div></div>
+        <div class="stat"><div class="n" id="doneWords">0</div><div class="l">单词数</div></div>
+      </div>
+      <button class="primary" onclick="start()">再测一遍</button>
+      <button class="next-btn" style="background:var(--surface);color:var(--ink-soft);border:1px solid var(--line)" onclick="goHome()">回到词库</button>
+    </div>
+  </section>
+
+  <!-- ============ 配对模式 ============ -->
+  <section id="view-match" class="hidden">
+    <div class="match-bar">
+      <span class="match-prog" id="matchProg">第 1 组</span>
+      <span class="timer" id="timer">0.0″</span>
+      <button class="quit" onclick="goHome()">退出</button>
+    </div>
+    <div class="match-grid" id="matchGrid"></div>
+    <div class="feedback" id="matchFeedback"></div>
+  </section>
+
+  <!-- ============ 配对完成 ============ -->
+  <section id="view-match-done" class="hidden">
+    <div class="card summary">
+      <div class="big-emoji">⚡️</div>
+      <h2>配对完成</h2>
+      <p id="matchDoneDesc"></p>
+      <div class="stat-row">
+        <div class="stat"><div class="n" id="matchTime">0″</div><div class="l">用时</div></div>
+        <div class="stat bad"><div class="n" id="matchMiss">0</div><div class="l">错配次数</div></div>
+      </div>
+      <button class="primary" id="matchRetryBtn" onclick="retryMatchWrong()">只练错过的词</button>
+      <button class="next-btn" style="background:var(--surface);color:var(--ink-soft);border:1px solid var(--line)" onclick="goHome()">回到词库</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+/* ============================ 数据 ============================ */
+const KEY = 'wordcheck.v1';
+let words = [];            // {id, term, def}
+let dir = 't2d';           // t2d | d2t | mix
+let mode = 'quiz';         // quiz | match
+
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(words)); }catch(e){} }
+function load(){ try{ const r=localStorage.getItem(KEY); if(r) words=JSON.parse(r)||[]; }catch(e){ words=[]; } }
+
+/* ============================ 工具 ============================ */
+const $ = id => document.getElementById(id);
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]];} return a; };
+const hasCJK = s => /[\u4e00-\u9fff\u3040-\u30ff]/.test(s);
+let uid = Date.now();
+
+function parseBulk(text){
+  const out=[];
+  text.split(/\r?\n/).forEach(line=>{
+    let s=line.trim(); if(!s) return;
+    let term, def;
+    if(s.includes('\t')){
+      const p=s.split('\t'); term=p[0]; def=p.slice(1).join(' ');
+    }else{
+      // 优先按「英文/数字段 → 中日文段」的边界切分，这样释义内的逗号不会误伤
+      const cjk=s.search(/[\u4e00-\u9fff\u3040-\u30ff\uff00-\uffef]/);
+      if(cjk>0){
+        const head=s.slice(0,cjk).replace(/[\s,，;；:：\-—–]+$/,'').trim();
+        if(head){ term=head; def=s.slice(cjk).trim(); }
+      }
+      if(term===undefined){
+        // 回退：逗号 → 破折号 → 多空格 → 单空格
+        let m;
+        if(/[,，]/.test(s)) m=s.split(/[,，]/);
+        else if(/\s[—–-]\s/.test(s)) m=s.split(/\s[—–-]\s/);
+        else if(/\s{2,}/.test(s)) m=s.split(/\s{2,}/);
+        else m=s.split(/\s+/);
+        term=m[0]; def=m.slice(1).join(' ');
+      }
+    }
+    term=(term||'').trim(); def=(def||'').trim();
+    if(term && def) out.push({id:++uid, term, def});
+  });
+  return out;
+}
+
+/* ============================ 录入页 ============================ */
+function renderList(){
+  $('wcount').textContent = words.length;
+  $('startBtn').disabled = words.length < 2;
+  const el=$('wlist');
+  if(!words.length){ el.innerHTML='<div class="empty">还没有单词，先在上方录入吧</div>'; return; }
+  el.innerHTML='';
+  words.forEach(w=>{
+    const d=document.createElement('div'); d.className='witem';
+    d.innerHTML=`<span class="t"></span><span class="d"></span><button class="x" aria-label="删除">×</button>`;
+    d.querySelector('.t').textContent=w.term;
+    d.querySelector('.d').textContent=w.def;
+    d.querySelector('.x').onclick=()=>{ words=words.filter(x=>x.id!==w.id); save(); renderList(); };
+    el.appendChild(d);
+  });
+}
+
+function addBulk(){
+  const t=$('bulk').value;
+  const parsed=parseBulk(t);
+  if(!parsed.length){ flash('没识别到单词，检查一下格式哦'); return; }
+  // 去重（按 term）
+  const exist=new Set(words.map(w=>w.term.toLowerCase()));
+  let added=0;
+  parsed.forEach(p=>{ if(!exist.has(p.term.toLowerCase())){ words.push(p); exist.add(p.term.toLowerCase()); added++; } });
+  save(); renderList(); $('bulk').value='';
+  flash(`已添加 ${added} 个单词`);
+}
+
+function clearAll(){ if(words.length && confirm('确定清空整个词库？')){ words=[]; save(); renderList(); } }
+
+function loadSample(kind){
+  const cet4=`abandon 放弃，抛弃
+benefit 益处，使受益
+crucial 至关重要的
+diligent 勤奋的
+efficient 高效的
+fragile 易碎的，脆弱的
+generous 慷慨的
+hesitate 犹豫
+inevitable 不可避免的
+justify 证明…正当`;
+  const gre=`ambiguous 模棱两可的
+candor 坦率，直率
+ephemeral 短暂的
+gregarious 爱社交的
+laconic 简洁的，言简意赅的
+meticulous 一丝不苟的
+pragmatic 务实的
+sanguine 乐观的
+tenacious 顽强的
+ubiquitous 无处不在的`;
+  $('bulk').value = kind==='gre'?gre:cet4;
+  flash('示例已填入，点「＋添加到词库」即可');
+}
+
+let flashTimer;
+function flash(msg){
+  let t=$('toast');
+  if(!t){ t=document.createElement('div'); t.id='toast';
+    t.style.cssText='position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;font-size:13.5px;font-weight:700;padding:10px 16px;border-radius:12px;box-shadow:var(--shadow);z-index:99;opacity:0;transition:opacity .2s';
+    document.body.appendChild(t);
+  }
+  t.textContent=msg; t.style.opacity='1';
+  clearTimeout(flashTimer); flashTimer=setTimeout(()=>t.style.opacity='0',1600);
+}
+
+/* segment 切换 */
+function bindSeg(segId, cb){
+  $(segId).querySelectorAll('button').forEach(b=>{
+    b.onclick=()=>{ $(segId).querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); cb(b.dataset.v); };
+  });
+}
+
+/* ============================ 视图切换 ============================ */
+function show(view){
+  ['home','quiz','summary','done','match','match-done'].forEach(v=>$('view-'+v).classList.add('hidden'));
+  $('view-'+view).classList.remove('hidden');
+  $('homeBtn').hidden = (view==='home');
+  window.scrollTo(0,0);
+}
+function goHome(){ stopTimer(); show('home'); renderList(); }
+
+/* ============================ 检测模式 ============================ */
+let queue=[];       // 本轮待测单词
+let nextQueue=[];   // 答错的，进入下一轮
+let roundWords=[];  // 本轮初始单词（用于点阵）
+let dotState={};    // id -> 'ok'|'bad'|'cur'|''
+let curWord=null, curAsk='t2d', roundNo=0, roundOk=0, answered=false;
+let totalWords=0;
+
+function start(){
+  if(words.length<2){ flash('至少需要 2 个单词'); return; }
+  if(mode==='match'){ startMatch(); return; }
+  roundNo=0;
+  totalWords=words.length;
+  queue=shuffle(words);
+  roundWords=queue.slice();
+  beginRound();
+}
+
+function beginRound(){
+  roundNo++;
+  nextQueue=[];
+  roundOk=0;
+  roundWords=queue.slice();
+  dotState={};
+  roundWords.forEach(w=>dotState[w.id]='');
+  $('roundTag').textContent = (roundNo===1?'第 1 轮':'重测 第 '+roundNo+' 轮');
+  $('roundTag').className = 'round-tag' + (roundNo>1?' review':'');
+  show('quiz');
+  renderDots();
+  loadQuestion();
+}
+
+function renderDots(){
+  const el=$('dots'); el.innerHTML='';
+  roundWords.forEach(w=>{
+    const d=document.createElement('div'); d.className='dot';
+    const st=dotState[w.id];
+    if(st) d.classList.add(st);
+    el.appendChild(d);
+  });
+}
+
+function pickAsk(){
+  if(dir==='mix') return Math.random()<0.5?'t2d':'d2t';
+  return dir;
+}
+
+function loadQuestion(){
+  answered=false;
+  $('feedback').textContent=''; $('feedback').className='feedback';
+  $('nextBtn').classList.add('hidden');
+  curWord=queue[0];
+  $('remainN').textContent=queue.length;
+
+  // 当前点高亮
+  const idx=roundWords.findIndex(w=>w.id===curWord.id);
+  Array.from($('dots').children).forEach((d,i)=>{
+    d.classList.remove('cur');
+    if(i===idx && !dotState[roundWords[i].id]) d.classList.add('cur');
+  });
+
+  curAsk=pickAsk();
+  const askTerm = curAsk==='t2d';   // true: 显示term选def; false: 显示def选term
+  const promptText = askTerm ? curWord.term : curWord.def;
+  const answerText = askTerm ? curWord.def : curWord.term;
+
+  $('qkind').textContent = askTerm ? '选择正确的释义' : '选择对应的单词';
+  const qt=$('qterm'); qt.textContent=promptText;
+  qt.className = 'qterm' + (hasCJK(promptText)?' cn':'');
+
+  // 干扰项：从其他词取对应字段
+  const pool = words.filter(w=>w.id!==curWord.id).map(w=> askTerm?w.def:w.term);
+  const distractors = shuffle([...new Set(pool.filter(x=>x!==answerText))]).slice(0,3);
+  const options = shuffle([answerText, ...distractors]);
+
+  const KEYS=['A','B','C','D'];
+  const box=$('opts'); box.innerHTML='';
+  options.forEach((opt,i)=>{
+    const b=document.createElement('button'); b.className='opt';
+    b.innerHTML=`<span class="key">${KEYS[i]}</span><span class="txt"></span>`;
+    b.querySelector('.txt').textContent=opt;
+    b.onclick=()=>choose(b, opt===answerText, answerText, box);
+    box.appendChild(b);
+  });
+}
+
+function choose(btn, isCorrect, answerText, box){
+  if(answered) return;
+  answered=true;
+  const all=Array.from(box.children);
+  all.forEach(b=>{ b.disabled=true; if(!b.classList.contains('correct')&&!b.classList.contains('wrong')) b.classList.add('dim'); });
+
+  const idx=roundWords.findIndex(w=>w.id===curWord.id);
+
+  if(isCorrect){
+    btn.classList.remove('dim'); btn.classList.add('correct');
+    $('feedback').textContent='答对了 ✓'; $('feedback').className='feedback ok';
+    roundOk++;
+    dotState[curWord.id]='ok';
+    Array.from($('dots').children)[idx]?.classList.remove('cur');
+    Array.from($('dots').children)[idx]?.classList.add('ok');
+    queue.shift();
+    setTimeout(()=>{ if(!$('nextBtn').classList.contains('hidden'))return; proceed(); }, 700);
+  }else{
+    btn.classList.remove('dim'); btn.classList.add('wrong');
+    // 高亮正确项
+    all.forEach(b=>{ if(b.querySelector('.txt').textContent===answerText){ b.classList.remove('dim'); b.classList.add('correct'); } });
+    $('feedback').textContent='记一下 → '+answerText; $('feedback').className='feedback bad';
+    dotState[curWord.id]='bad';
+    Array.from($('dots').children)[idx]?.classList.remove('cur');
+    Array.from($('dots').children)[idx]?.classList.add('bad');
+    nextQueue.push(curWord);
+    queue.shift();
+    $('nextBtn').classList.remove('hidden');
+  }
+}
+
+function proceed(){
+  if(queue.length){ loadQuestion(); }
+  else { endRound(); }
+}
+function nextQuestion(){ proceed(); }
+
+function endRound(){
+  if(nextQueue.length===0){ showDone(); return; }
+  // 显示小结
+  $('sumEmoji').textContent = roundOk>0 ? '📈' : '💪';
+  $('sumTitle').textContent = roundNo===1 ? '第 1 轮结束' : '本轮结束';
+  $('sumDesc').textContent = `还有 ${nextQueue.length} 个没掌握，再来一轮，只测这些。`;
+  $('sumOk').textContent = roundOk;
+  $('sumBad').textContent = nextQueue.length;
+  $('sumBtn').textContent = '重测这 '+nextQueue.length+' 个';
+  queue = shuffle(nextQueue);   // 下一轮只测错的
+  show('summary');
+}
+
+function afterSummary(){ beginRound(); }
+
+function showDone(){
+  $('doneDesc').textContent = `${totalWords} 个单词全部答对，用了 ${roundNo} 轮。`;
+  $('doneRounds').textContent=roundNo;
+  $('doneWords').textContent=totalWords;
+  show('done');
+}
+
+/* ============================ 配对模式 ============================ */
+const GROUP=6;            // 每组对数
+let matchPool=[], matchGroup=[], selCell=null, matchMiss=0, matchWrongIds=new Set();
+let tStart=0, tRAF=null;
+
+function startMatch(){
+  matchPool=shuffle(words);
+  matchMiss=0; matchWrongIds=new Set();
+  tStart=performance.now();
+  startTimer();
+  show('match');
+  nextMatchGroup(true);
+}
+
+function nextMatchGroup(first){
+  const total=Math.ceil(words.length/GROUP);
+  const done=Math.ceil((words.length-matchPool.length)/GROUP);
+  if(matchPool.length===0){ finishMatch(); return; }
+  matchGroup = matchPool.splice(0, GROUP);
+  $('matchProg').textContent = `第 ${ (Math.ceil((words.length-matchPool.length)/GROUP)) } / ${total} 组`;
+  selCell=null;
+  renderMatchGrid();
+}
+
+function renderMatchGrid(){
+  const terms=matchGroup.map(w=>({id:w.id,text:w.term,type:'term'}));
+  const defs=matchGroup.map(w=>({id:w.id,text:w.def,type:'def'}));
+  const cells=shuffle([...terms,...defs]);
+  const grid=$('matchGrid'); grid.innerHTML=''; $('matchFeedback').textContent='';
+  cells.forEach(c=>{
+    const el=document.createElement('button');
+    el.className='mcell'+(c.type==='term'?' term':'');
+    el.textContent=c.text;
+    el.dataset.id=c.id; el.dataset.type=c.type;
+    el.onclick=()=>pickCell(el);
+    grid.appendChild(el);
+  });
+}
+
+function pickCell(el){
+  if(el.classList.contains('gone')||el.classList.contains('hit')) return;
+  if(!selCell){ selCell=el; el.classList.add('sel'); return; }
+  if(selCell===el){ el.classList.remove('sel'); selCell=null; return; }
+  // 必须一个 term 一个 def
+  if(selCell.dataset.type===el.dataset.type){
+    selCell.classList.remove('sel'); selCell=el; el.classList.add('sel'); return;
+  }
+  const a=selCell, b=el;
+  if(a.dataset.id===b.dataset.id){
+    // 配对成功
+    a.classList.remove('sel'); a.classList.add('hit'); b.classList.add('hit');
+    setTimeout(()=>{ a.classList.add('gone'); b.classList.add('gone'); checkGroupDone(); },300);
+    selCell=null;
+  }else{
+    // 错配
+    matchMiss++;
+    matchWrongIds.add(a.dataset.id); matchWrongIds.add(b.dataset.id);
+    a.classList.remove('sel'); a.classList.add('miss'); b.classList.add('miss');
+    const aa=a,bb=b;
+    setTimeout(()=>{ aa.classList.remove('miss'); bb.classList.remove('miss'); },380);
+    selCell=null;
+  }
+}
+
+function checkGroupDone(){
+  const left=Array.from($('matchGrid').children).filter(c=>!c.classList.contains('gone'));
+  if(left.length===0) nextMatchGroup(false);
+}
+
+function startTimer(){
+  cancelAnimationFrame(tRAF);
+  const tick=()=>{ const s=(performance.now()-tStart)/1000; $('timer').textContent=s.toFixed(1)+'″'; tRAF=requestAnimationFrame(tick); };
+  tick();
+}
+function stopTimer(){ cancelAnimationFrame(tRAF); }
+
+function finishMatch(){
+  stopTimer();
+  const s=((performance.now()-tStart)/1000).toFixed(1);
+  $('matchTime').textContent=s+'″';
+  $('matchMiss').textContent=matchMiss;
+  $('matchDoneDesc').textContent = matchMiss===0 ? '全程零失误，太强了！' : '错过的词可以单独再练一遍。';
+  $('matchRetryBtn').style.display = matchWrongIds.size? '' : 'none';
+  show('match-done');
+}
+
+function retryMatchWrong(){
+  const ids=matchWrongIds;
+  const subset=words.filter(w=>ids.has(String(w.id))||ids.has(w.id));
+  if(subset.length<1){ goHome(); return; }
+  matchPool=shuffle(subset);
+  matchMiss=0; matchWrongIds=new Set();
+  tStart=performance.now(); startTimer();
+  show('match'); nextMatchGroup(true);
+}
+
+/* ============================ 初始化 ============================ */
+bindSeg('segDir', v=>dir=v);
+bindSeg('segMode', v=>mode=v);
+load();
+renderList();
+show('home');
+</script>
+</body>
+</html>
