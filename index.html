@@ -7,17 +7,17 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="单词检测">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#2D4ECC">
+<meta name="theme-color" content="#2F9E68">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" type="image/png" href="./icon-192.png">
 <title>单词检测</title>
 <style>
   :root{
-    --bg:#EEF0F3;--surface:#FFFFFF;--ink:#15202B;--ink-soft:#5A6573;--line:#E2E6EC;
-    --brand:#2D4ECC;--brand-soft:#E7ECFC;--ok:#0E9F6E;--ok-soft:#E1F4ED;
-    --bad:#E2533B;--bad-soft:#FBE7E2;--amber:#F5A623;--gray:#9AA4B2;
-    --shadow:0 1px 2px rgba(21,32,43,.06),0 8px 24px rgba(21,32,43,.07);
+    --bg:#EAF6EE;--surface:#FFFFFF;--ink:#16261D;--ink-soft:#5C7868;--line:#DCEEE2;
+    --brand:#2F9E68;--brand-soft:#E2F5E9;--ok:#1F8F5F;--ok-soft:#DFF3E7;
+    --bad:#E2533B;--bad-soft:#FBE7E2;--amber:#F5A623;--gray:#9AB3A4;
+    --shadow:0 1px 2px rgba(22,38,29,.06),0 8px 24px rgba(22,38,29,.07);
     --radius:18px;
     --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
   }
@@ -75,7 +75,29 @@
   .deck .add.added{background:#EDF0F4;color:var(--gray)}
   .deck-empty{text-align:center;color:var(--gray);font-size:13.5px;padding:22px 10px;background:var(--surface);border-radius:16px;box-shadow:var(--shadow)}
 
-  .intro{background:linear-gradient(135deg,#2D4ECC,#4360E0);color:#fff;box-shadow:var(--shadow)}
+  .intro{background:linear-gradient(135deg,#2F9E68,#4FC089);color:#fff;box-shadow:var(--shadow)}
+
+  /* ---- 打卡 ---- */
+  .streak-card{display:flex;background:linear-gradient(135deg,#DFF3E7,#C9ECDA)}
+  .streak-row{display:flex;align-items:center;gap:14px;width:100%}
+  .streak-flame{font-size:36px;line-height:1;flex-shrink:0}
+  .streak-info{flex:1;min-width:0}
+  .streak-n{font-size:15px;font-weight:800;color:var(--ink)}
+  .streak-n span{color:var(--brand);font-size:24px}
+  .streak-l{font-size:12.5px;color:var(--ink-soft);font-weight:600;margin-top:2px}
+
+  .celebrate-ov{position:fixed;inset:0;background:rgba(16,32,22,.55);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+  .celebrate-card{background:#fff;border-radius:20px;padding:32px 26px;text-align:center;max-width:300px;box-shadow:var(--shadow);animation:popIn .35s}
+  .celebrate-emoji{font-size:54px;margin-bottom:8px}
+  .celebrate-card h2{margin:0 0 8px;font-size:19px;font-weight:800;color:var(--ink)}
+  .celebrate-card p{margin:0 0 18px;color:var(--ink-soft);font-size:13.5px;line-height:1.6}
+  @keyframes popIn{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
+  .confetti-piece{position:fixed;top:-12px;width:9px;height:14px;z-index:201;border-radius:2px;animation:confettiFall linear forwards;pointer-events:none}
+  @keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(108vh) rotate(420deg);opacity:.85}}
+
+  /* ---- 拼写模式 ---- */
+  .spell-input-wrap{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+  .spell-in{text-align:center;font-size:18px;font-weight:700;letter-spacing:.6px}
   .intro h2{margin:0 0 5px;font-size:17px;font-weight:800}
   .intro p{margin:0;font-size:13px;opacity:.92;line-height:1.55}
 
@@ -174,6 +196,16 @@
 
   <!-- ============ 词库列表（首页） ============ -->
   <section id="view-decks">
+    <div class="card streak-card" id="streakCard">
+      <div class="streak-row">
+        <div class="streak-flame" id="streakFlame">🌱</div>
+        <div class="streak-info">
+          <div class="streak-n"><span id="streakCount">0</span> 天连续打卡</div>
+          <div class="streak-l" id="streakLabel">练一组单词，开始第一天吧</div>
+        </div>
+      </div>
+    </div>
+
     <div class="sectionhead">
       <h2>我的词库</h2>
       <button class="mini-btn" onclick="promptNewDeck()">＋ 新建</button>
@@ -229,6 +261,7 @@
           <div class="seg" id="segMode">
             <button data-v="quiz" class="on">检测·错题循环</button>
             <button data-v="match">配对·消除游戏</button>
+            <button data-v="spell">拼写·打字练习</button>
           </div>
         </div>
       </div>
@@ -253,6 +286,28 @@
     <div class="opts" id="opts"></div>
     <div class="feedback" id="feedback"></div>
     <button class="next-btn hidden" id="nextBtn" onclick="nextQuestion()">继续</button>
+  </section>
+
+  <!-- ============ 拼写模式 ============ -->
+  <section id="view-spell" class="hidden">
+    <div class="quiztop">
+      <div class="quizmeta">
+        <span class="round-tag" id="roundTagSpell">第 1 轮</span>
+        <span class="remain">剩余 <b id="remainNSpell">0</b> 题</span>
+        <button class="quit" onclick="backToHome()">退出</button>
+      </div>
+      <div class="dots" id="dotsSpell"></div>
+    </div>
+    <div class="card qcard">
+      <div class="qkind" id="qkindSpell">看意思，拼写出单词</div>
+      <div class="qterm" id="qtermSpell">—</div>
+    </div>
+    <div class="spell-input-wrap">
+      <input class="tin spell-in" id="spellInput" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="在此输入拼写…">
+      <button class="primary" id="spellSubmitBtn" onclick="checkSpellAnswer()">提交</button>
+    </div>
+    <div class="feedback" id="feedbackSpell"></div>
+    <button class="next-btn hidden" id="nextBtnSpell" onclick="nextSpellQuestion()">继续</button>
   </section>
 
   <!-- ============ 轮次小结 ============ -->
@@ -539,6 +594,7 @@ BUILTIN.forEach(b=> b.count=parseBulk(b.raw).length);
 
 /* ============================ 词库列表视图 ============================ */
 function renderDecks(){
+  renderStreak();
   // 我的词库
   const my=$('myDecks');
   if(!store.decks.length){
@@ -649,7 +705,7 @@ function renameCurrent(){
 
 /* ============================ 视图切换 ============================ */
 function show(view){
-  ['decks','home','quiz','summary','done','match','match-done'].forEach(v=>$('view-'+v).classList.add('hidden'));
+  ['decks','home','quiz','spell','summary','done','match','match-done'].forEach(v=>$('view-'+v).classList.add('hidden'));
   $('view-'+view).classList.remove('hidden');
   $('homeBtn').hidden=(view==='decks');
   window.scrollTo(0,0);
@@ -666,6 +722,7 @@ function start(){
   const d=curDeck(); if(!d){ backToDecks(); return; }
   words=d.words;
   if(words.length<2){ flash('至少需要 2 个词'); return; }
+  recordCheckin();
   if(mode==='match'){ startMatch(); return; }
   roundNo=0; totalWords=words.length;
   queue=shuffle(words); roundWords=queue.slice();
@@ -675,13 +732,16 @@ function start(){
 function beginRound(){
   roundNo++; nextQueue=[]; roundOk=0; roundWords=queue.slice();
   dotState={}; roundWords.forEach(w=>dotState[w.id]='');
-  $('roundTag').textContent=(roundNo===1?'第 1 轮':'重测 第 '+roundNo+' 轮');
-  $('roundTag').className='round-tag'+(roundNo>1?' review':'');
-  show('quiz'); renderDots(); loadQuestion();
+  const tagId=mode==='spell'?'roundTagSpell':'roundTag';
+  $(tagId).textContent=(roundNo===1?'第 1 轮':'重测 第 '+roundNo+' 轮');
+  $(tagId).className='round-tag'+(roundNo>1?' review':'');
+  show(mode==='spell'?'spell':'quiz'); renderDots();
+  if(mode==='spell') loadSpellQuestion(); else loadQuestion();
 }
 
 function renderDots(){
-  const el=$('dots'); el.innerHTML='';
+  const id=mode==='spell'?'dotsSpell':'dots';
+  const el=$(id); el.innerHTML='';
   roundWords.forEach(w=>{ const d=document.createElement('div'); d.className='dot'; if(dotState[w.id])d.classList.add(dotState[w.id]); el.appendChild(d); });
 }
 function pickAsk(){ return dir==='mix' ? (Math.random()<0.5?'t2d':'d2t') : dir; }
@@ -738,8 +798,46 @@ function choose(btn,isCorrect,answerText,box){
   }
 }
 
-function proceed(){ if(queue.length) loadQuestion(); else endRound(); }
+function proceed(){ if(queue.length){ if(mode==='spell') loadSpellQuestion(); else loadQuestion(); } else endRound(); }
 function nextQuestion(){ proceed(); }
+
+/* ---- 拼写模式 ---- */
+function loadSpellQuestion(){
+  answered=false;
+  $('feedbackSpell').textContent=''; $('feedbackSpell').className='feedback';
+  $('nextBtnSpell').classList.add('hidden');
+  const inp=$('spellInput'); inp.value=''; inp.disabled=false;
+  curWord=queue[0]; $('remainNSpell').textContent=queue.length;
+  const idx=roundWords.findIndex(w=>w.id===curWord.id);
+  Array.from($('dotsSpell').children).forEach((d,i)=>{ d.classList.remove('cur'); if(i===idx&&!dotState[roundWords[i].id]) d.classList.add('cur'); });
+  const qt=$('qtermSpell'); qt.textContent=curWord.def; qt.className='qterm'+(hasCJK(curWord.def)?' cn':'');
+  setTimeout(()=>inp.focus(),50);
+}
+
+function checkSpellAnswer(){
+  if(answered) return;
+  const inp=$('spellInput');
+  const val=inp.value.trim();
+  if(!val){ inp.focus(); return; }
+  answered=true; inp.disabled=true;
+  const idx=roundWords.findIndex(w=>w.id===curWord.id);
+  const ok=val.toLowerCase()===curWord.term.trim().toLowerCase();
+  const dt=Array.from($('dotsSpell').children)[idx];
+  if(ok){
+    $('feedbackSpell').textContent='拼写正确 ✓'; $('feedbackSpell').className='feedback ok';
+    roundOk++; dotState[curWord.id]='ok';
+    if(dt){ dt.classList.remove('cur'); dt.classList.add('ok'); }
+    queue.shift();
+    setTimeout(()=>{ if($('nextBtnSpell').classList.contains('hidden')) proceed(); },700);
+  }else{
+    $('feedbackSpell').textContent='正确拼写 → '+curWord.term; $('feedbackSpell').className='feedback bad';
+    dotState[curWord.id]='bad';
+    if(dt){ dt.classList.remove('cur'); dt.classList.add('bad'); }
+    nextQueue.push(curWord); queue.shift();
+    $('nextBtnSpell').classList.remove('hidden');
+  }
+}
+function nextSpellQuestion(){ proceed(); }
 
 function endRound(){
   if(nextQueue.length===0){ showDone(); return; }
@@ -825,9 +923,73 @@ function retryMatchWrong(){
   tStart=performance.now(); startTimer(); show('match'); nextMatchGroup();
 }
 
+/* ============================ 打卡 / 连续天数 ============================ */
+function todayLocal(d){ d=d||new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
+
+function recordCheckin(){
+  if(!store.streak) store.streak={count:0,last:null,longest:0,milestones:[]};
+  const s=store.streak;
+  const t=todayLocal();
+  if(s.last===t) return; // 今天已打卡
+  const yd=new Date(); yd.setDate(yd.getDate()-1);
+  const yStr=todayLocal(yd);
+  s.count=(s.last===yStr)?s.count+1:1;
+  s.last=t;
+  if(s.count>s.longest) s.longest=s.count;
+  save();
+  renderStreak();
+  const milestones=[5,10,30];
+  if(milestones.includes(s.count)&&!s.milestones.includes(s.count)){
+    s.milestones.push(s.count); save();
+    celebrate(s.count);
+  }
+}
+
+function renderStreak(){
+  const cnt=$('streakCount'); if(!cnt) return;
+  const s=store.streak||{count:0,last:null,longest:0,milestones:[]};
+  cnt.textContent=s.count;
+  $('streakFlame').textContent = s.count>=30?'🌳' : s.count>=10?'🌿' : s.count>=1?'🌱' : '🌱';
+  const checkedToday = s.last===todayLocal();
+  $('streakLabel').textContent = s.count===0
+    ? '练一组单词，开始第一天吧'
+    : (checkedToday ? `今天已打卡，最长连续 ${s.longest} 天` : '今天还没打卡，练一组继续连胜');
+}
+
+const CELEBRATE_MSG={
+  5:{emoji:'🌱',title:'连续打卡 5 天',desc:'小树苗破土而出，继续保持！'},
+  10:{emoji:'🌿',title:'连续打卡 10 天',desc:'枝叶渐渐茂盛，你做得很好！'},
+  30:{emoji:'🌳',title:'连续打卡 30 天',desc:'已经长成一片绿荫，了不起的坚持！'}
+};
+function celebrate(n){
+  const info=CELEBRATE_MSG[n]||{emoji:'🎉',title:'连续打卡 '+n+' 天',desc:'坚持就是胜利！'};
+  spawnConfetti();
+  const ov=document.createElement('div'); ov.className='celebrate-ov';
+  ov.innerHTML=`<div class="celebrate-card"><div class="celebrate-emoji"></div><h2></h2><p></p><button class="primary">太棒了</button></div>`;
+  ov.querySelector('.celebrate-emoji').textContent=info.emoji;
+  ov.querySelector('h2').textContent=info.title;
+  ov.querySelector('p').textContent=info.desc;
+  ov.querySelector('button').onclick=()=>ov.remove();
+  document.body.appendChild(ov);
+}
+function spawnConfetti(){
+  const colors=['#2F9E68','#7CD9A8','#BFF0D2','#1F8F5F','#A8E6C1'];
+  for(let i=0;i<48;i++){
+    const p=document.createElement('div'); p.className='confetti-piece';
+    p.style.left=Math.random()*100+'vw';
+    p.style.background=colors[(Math.random()*colors.length)|0];
+    p.style.animationDuration=(2.2+Math.random()*1.6)+'s';
+    p.style.animationDelay=(Math.random()*0.4)+'s';
+    p.style.transform=`rotate(${(Math.random()*360)|0}deg)`;
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(),4300);
+  }
+}
+
 /* ============================ 初始化 ============================ */
 bindSeg('segDir',v=>dir=v);
 bindSeg('segMode',v=>mode=v);
+$('spellInput').addEventListener('keydown',e=>{ if(e.key==='Enter') checkSpellAnswer(); });
 load();
 renderDecks();
 show('decks');
